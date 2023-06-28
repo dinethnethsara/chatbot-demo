@@ -11,7 +11,7 @@ df = pd.read_csv('embeddings.csv', index_col=0)
 df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 df.head()
 
-DISTRICT_NAME = 'El Monte School District'
+DISTRICT_NAME = 'Edlio Central High School'
 
 messages = [
     {
