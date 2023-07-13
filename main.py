@@ -97,8 +97,6 @@ def user_prompt_submit():
 
 st.set_page_config(page_title="Edlio ChatBot", page_icon="🤖", layout="centered")
 
-st.header("Welcome to Edlio ChatBot! Ask away! 🤖\n")
-
 if 'prompt' not in st.session_state:
     st.session_state.prompt = ''
 
@@ -108,7 +106,7 @@ if 'generated' not in st.session_state:
 if 'past' not in st.session_state:
     st.session_state['past'] = []
 
-st.text_input('Type in your question here', key='input', on_change=user_prompt_submit)
+st.text_input('Type in your question here', label_visibility="collapsed", placeholder='Type in your question here', key='input', on_change=user_prompt_submit)
 
 if st.session_state.prompt:
     assistant_response = get_completion_from_messages(st.session_state.prompt, temperature=0)
