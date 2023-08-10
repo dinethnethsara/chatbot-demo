@@ -98,8 +98,6 @@ def user_prompt_submit():
 
 st.set_page_config(page_title="Edlio ChatBot", page_icon="🤖", layout="wide")
 
-# st.header("Welcome to Edlio ChatBot! Ask away! 🤖\n")
-
 if 'prompt' not in st.session_state:
     st.session_state.prompt = ''
 
