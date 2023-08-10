@@ -4,6 +4,7 @@ import numpy as np
 import streamlit as st
 from openai.embeddings_utils import distances_from_embeddings
 from streamlit_chat import message
+from streamlit.components.v1 import html
 
 openai.api_key = st.secrets["api_keys"]["openai"]
 
@@ -95,9 +96,9 @@ def user_prompt_submit():
     st.session_state['input'] = ''
 
 
-st.set_page_config(page_title="Edlio ChatBot", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Edlio ChatBot", page_icon="🤖", layout="wide")
 
-st.header("Welcome to Edlio ChatBot! Ask away! 🤖\n")
+# st.header("Welcome to Edlio ChatBot! Ask away! 🤖\n")
 
 if 'prompt' not in st.session_state:
     st.session_state.prompt = ''
@@ -108,7 +109,21 @@ if 'generated' not in st.session_state:
 if 'past' not in st.session_state:
     st.session_state['past'] = []
 
-st.text_input('Type in your question here', key='input', on_change=user_prompt_submit)
+html(f"""
+<script>
+    function scroll(index){{
+        setTimeout(() => {{
+            const container = parent.document.querySelector('.block-container');
+            if (!container) return false;
+            container.scrollTop = container.scrollHeight;
+            if (index > -1) {{
+                scroll(-1);
+            }}
+        }}, "3000");
+    }}
+    scroll({len(st.session_state['generated'])});
+</script>
+""")
 
 if st.session_state.prompt:
     assistant_response = get_completion_from_messages(st.session_state.prompt, temperature=0)
@@ -117,6 +132,44 @@ if st.session_state.prompt:
     messages.append({'role': 'assistant', 'content': assistant_response})
 
 if st.session_state['generated']:
-    for i in range(len(st.session_state['generated']) - 1, -1, -1):
-        message(st.session_state["generated"][i], key=str(i))
+    for i in range(len(st.session_state['generated'])):
         message(st.session_state['past'][i], is_user=True, avatar_style="adventurer", key=str(i) + '_user')
+        message(st.session_state["generated"][i], key=str(i))
+
+st.text_input(key='input',
+              on_change=user_prompt_submit,
+              label='Type in your question here',
+              label_visibility='hidden',
+              placeholder='Type in your question here')
+
+styl = f"""
+<style>
+    .stTextInput {{
+        position: fixed;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        width: 96vw;
+        margin: auto;
+    }}    
+    
+    .block-container {{
+        position: fixed !important;
+        bottom: 1rem !important;
+        padding: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        max-height: 90vh !important;
+        width: 96vw !important;
+    }}
+    
+    #MainMenu {{
+        display: none;
+    }}
+    
+    footer {{
+        display: none;
+    }}
+</style>
+"""
+st.markdown(styl, unsafe_allow_html=True)
