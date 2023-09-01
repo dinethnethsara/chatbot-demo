@@ -10,7 +10,7 @@ from openai.embeddings_utils import distances_from_embeddings
 from streamlit_chat import message
 from streamlit.components.v1 import html
 
-api_url = 'http://localhost/SIA.API/api/chat-bot/'
+api_url = 'https://connect-dev.schoolinfo.app/api/chat-bot/'
 
 log_credentials = base64.b64encode(f"{st.secrets['log']['username']}:{st.secrets['log']['password']}".encode()).decode()
 
@@ -107,7 +107,8 @@ def create_conversation_log(conversation_id):
             'createdAt': datetime.datetime.utcnow().isoformat()
         }
         headers = {
-            'Authorization': f'Basic {log_credentials}'
+            'Authorization': f'Basic {log_credentials}',
+            'X-SIA-TENANT': 'DevAlpha'
         }
         response = requests.post(api_url + 'create-conversation-log', json=payload, headers=headers)
         if 200 <= response.status_code < 300:
@@ -124,7 +125,8 @@ def log_message(is_user, message_text):
         'timeStamp': datetime.datetime.utcnow().isoformat()
     }
     headers = {
-        'Authorization': f'Basic {log_credentials}'
+        'Authorization': f'Basic {log_credentials}',
+        'X-SIA-TENANT': 'DevAlpha'
     }
     response = requests.post(api_url + 'log-message', json=payload, headers=headers)
     print(f'Message logged. Response status code: {response.status_code}')
