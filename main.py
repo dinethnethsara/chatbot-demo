@@ -1,3 +1,4 @@
+import base64
 import pandas as pd
 import openai
 import numpy as np
@@ -9,8 +10,9 @@ from openai.embeddings_utils import distances_from_embeddings
 from streamlit_chat import message
 from streamlit.components.v1 import html
 
-
 api_url = 'http://localhost/SIA.API/api/chat-bot/'
+
+log_credentials = base64.b64encode(f"{st.secrets['log']['username']}:{st.secrets['log']['password']}".encode()).decode()
 
 openai.api_key = st.secrets["api_keys"]["openai"]
 
@@ -18,12 +20,12 @@ df = pd.read_csv('embeddings.csv', index_col=0)
 df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 df.head()
 
-DISTRICT_NAME = 'Edlio Central High School'
+district_name = 'Edlio Central High School'
 
 messages = [
     {
         'role': 'system',
-        'content': f'You are a friendly assistant that answers {DISTRICT_NAME} related questions. '
+        'content': f'You are a friendly assistant that answers {district_name} related questions. '
                    'Answer the question as truthfully as possible using the provided context, '
                    'and if the answer is not contained within the text below, say \"I don\'t know.\"'
                    'Be proactive and offer some example question that you can answer.'
@@ -69,7 +71,7 @@ def create_context(
 
 
 def get_completion_from_messages(question='', model="gpt-3.5-turbo", temperature=0):
-    question = f'Probably related to the {DISTRICT_NAME}. {question}'
+    question = f'Probably related to the {district_name}. {question}'
     context = create_context(
         question,
         df,
@@ -97,37 +99,17 @@ def get_completion_from_messages(question='', model="gpt-3.5-turbo", temperature
         return None
 
 
-def get_current_url():
-    return ''
-    # value = st_javascript("""await fetch("").then(function(response) {
-    #     return window.parent.location.href;
-    # }) """)
-    #
-    # return str(value)
-
-    # sessions = st.runtime.get_instance()._session_mgr.list_active_sessions()
-    # req = st.runtime.get_instance()._session_mgr.get_active_session_info(sessions[0]).request
-    # joinme = (req.protocol, req.host, "", "", "", "")
-    # my_url = urlunparse(joinme)
-    # return my_url
-
-    # return st_javascript("await fetch('').then(r => window.parent.location.href)")
-
-
-def get_user_agent():
-    return ''
-    # return str(st_javascript("await fetch('').then(r => window.navigator.userAgent)"))
-
-
 def create_conversation_log(conversation_id):
     if 'conversation_created' not in st.session_state:
         payload = {
             'conversationId': conversation_id,
-            'pageUrl': get_current_url(),
-            'userAgent': get_user_agent(),
+            'districtName': district_name,
             'createdAt': datetime.datetime.utcnow().isoformat()
         }
-        response = requests.post(api_url + 'create-conversation-log', json=payload)
+        headers = {
+            'Authorization': f'Basic {log_credentials}'
+        }
+        response = requests.post(api_url + 'create-conversation-log', json=payload, headers=headers)
         if 200 <= response.status_code < 300:
             st.session_state['conversation_created'] = 'true'
 
@@ -141,7 +123,10 @@ def log_message(is_user, message_text):
         'message': message_text,
         'timeStamp': datetime.datetime.utcnow().isoformat()
     }
-    response = requests.post(api_url + 'log-message', json=payload)
+    headers = {
+        'Authorization': f'Basic {log_credentials}'
+    }
+    response = requests.post(api_url + 'log-message', json=payload, headers=headers)
     print(f'Message logged. Response status code: {response.status_code}')
 
 
