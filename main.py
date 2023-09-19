@@ -1,10 +1,18 @@
+import base64
 import pandas as pd
 import openai
 import numpy as np
 import streamlit as st
+import uuid
+import requests
+import datetime
 from openai.embeddings_utils import distances_from_embeddings
 from streamlit_chat import message
 from streamlit.components.v1 import html
+
+api_url = 'https://connect-dev.schoolinfo.app/api/chat-bot/'
+
+log_credentials = base64.b64encode(f"{st.secrets['log']['username']}:{st.secrets['log']['password']}".encode()).decode()
 
 openai.api_key = st.secrets["api_keys"]["openai"]
 
@@ -12,12 +20,12 @@ df = pd.read_csv('embeddings.csv', index_col=0)
 df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 df.head()
 
-DISTRICT_NAME = 'Dawson Independent School District'
+district_name = 'Edlio Central High School'
 
 messages = [
     {
         'role': 'system',
-        'content': f'You are a friendly assistant that answers {DISTRICT_NAME} related questions. '
+        'content': f'You are a friendly assistant that answers {district_name} related questions. '
                    'Answer the question as truthfully as possible using the provided context, '
                    'and if the answer is not contained within the text below, say \"I don\'t know.\"'
                    'Be proactive and offer some example question that you can answer.'
@@ -63,7 +71,7 @@ def create_context(
 
 
 def get_completion_from_messages(question='', model="gpt-3.5-turbo", temperature=0):
-    question = f'Probably related to the {DISTRICT_NAME}. {question}'
+    question = f'Probably related to the {district_name}. {question}'
     context = create_context(
         question,
         df,
@@ -91,12 +99,52 @@ def get_completion_from_messages(question='', model="gpt-3.5-turbo", temperature
         return None
 
 
+def create_conversation_log(conversation_id):
+    if 'conversation_created' not in st.session_state:
+        payload = {
+            'conversationId': conversation_id,
+            'districtName': district_name,
+            'createdAt': datetime.datetime.utcnow().isoformat()
+        }
+        headers = {
+            'Authorization': f'Basic {log_credentials}',
+            'X-SIA-TENANT': 'DevAlpha'
+        }
+        response = requests.post(api_url + 'create-conversation-log', json=payload, headers=headers)
+        if 200 <= response.status_code < 300:
+            st.session_state['conversation_created'] = 'true'
+
+        print(f'Conversation log created. Response status code: {response.status_code}')
+
+
+def log_message(is_user, message_text):
+    payload = {
+        'conversationId': st.session_state['conversation_identifier'],
+        'isUser': is_user,
+        'message': message_text,
+        'timeStamp': datetime.datetime.utcnow().isoformat()
+    }
+    headers = {
+        'Authorization': f'Basic {log_credentials}',
+        'X-SIA-TENANT': 'DevAlpha'
+    }
+    response = requests.post(api_url + 'log-message', json=payload, headers=headers)
+    print(f'Message logged. Response status code: {response.status_code}')
+
+
 def user_prompt_submit():
-    st.session_state.prompt = st.session_state.input
+    user_input = st.session_state.input
+    st.session_state.prompt = user_input
     st.session_state['input'] = ''
+    if 'conversation_identifier' not in st.session_state:
+        convo_id = str(uuid.uuid4())
+        st.session_state['conversation_identifier'] = convo_id
+        create_conversation_log(convo_id)
+    log_message(True, user_input)
 
 
 st.set_page_config(page_title="Edlio ChatBot", page_icon="🤖", layout="wide")
+
 
 if 'prompt' not in st.session_state:
     st.session_state.prompt = ''
@@ -128,6 +176,7 @@ if st.session_state.prompt:
     st.session_state.past.append(st.session_state.prompt)
     st.session_state.generated.append(assistant_response)
     messages.append({'role': 'assistant', 'content': assistant_response})
+    log_message(False, assistant_response)
 
 if st.session_state['generated']:
     for i in range(len(st.session_state['generated'])):
