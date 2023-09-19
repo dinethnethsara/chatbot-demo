@@ -20,7 +20,9 @@ df = pd.read_csv('embeddings.csv', index_col=0)
 df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 df.head()
 
-district_name = 'Edlio Central High School'
+district_name = 'Dawson Independent School District'
+
+welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
 
 messages = [
     {
@@ -32,7 +34,7 @@ messages = [
     },
     {
         'role': 'assistant',
-        'content': 'Hi there! How can I help you?'
+        'content': welcome_message
     }
 ]
 
@@ -170,6 +172,8 @@ html(f"""
     scroll({len(st.session_state['generated'])});
 </script>
 """)
+
+message(welcome_message, key='-1')
 
 if st.session_state.prompt:
     assistant_response = get_completion_from_messages(st.session_state.prompt, temperature=0)
