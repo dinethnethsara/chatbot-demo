@@ -20,7 +20,7 @@ df = pd.read_csv('embeddings.csv', index_col=0)
 df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 df.head()
 
-district_name = 'Dawson Independent School District'
+district_name = 'St. Dominic High School'
 
 welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
 
@@ -145,7 +145,7 @@ def user_prompt_submit():
     log_message(True, user_input)
 
 
-st.set_page_config(page_title="Edlio ChatBot", page_icon="🤖", layout="wide")
+st.set_page_config(page_title=f"{district_name} ChatBot", page_icon="🤖", layout="wide")
 
 
 if 'prompt' not in st.session_state:
