@@ -22,6 +22,8 @@ df.head()
 
 district_name = 'Edlio Central High School'
 
+welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
+
 messages = [
     {
         'role': 'system',
@@ -32,7 +34,7 @@ messages = [
     },
     {
         'role': 'assistant',
-        'content': 'Hi there! How can I help you?'
+        'content': welcome_message
     }
 ]
 
@@ -143,7 +145,7 @@ def user_prompt_submit():
     log_message(True, user_input)
 
 
-st.set_page_config(page_title="Edlio ChatBot", page_icon="🤖", layout="wide")
+st.set_page_config(page_title=f"{district_name} ChatBot", page_icon="🤖", layout="wide")
 
 
 if 'prompt' not in st.session_state:
@@ -170,6 +172,8 @@ html(f"""
     scroll({len(st.session_state['generated'])});
 </script>
 """)
+
+message(welcome_message, key='-1')
 
 if st.session_state.prompt:
     assistant_response = get_completion_from_messages(st.session_state.prompt, temperature=0)
