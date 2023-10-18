@@ -20,7 +20,7 @@ df = pd.read_csv('embeddings.csv', index_col=0)
 df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 df.head()
 
-district_name = 'Region 7 Education Service Center'
+district_name = 'Alcoa City Schools'
 
 welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
 
