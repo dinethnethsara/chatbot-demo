@@ -24,6 +24,8 @@ district_name = 'St. Dominic High School'
 
 welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
 
+welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
+
 messages = [
     {
         'role': 'system',
