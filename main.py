@@ -22,8 +22,6 @@ df.head()
 
 district_name = 'Region 7 Education Service Center'
 
-welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
-
 messages = [
     {
         'role': 'system',
@@ -103,35 +101,41 @@ def get_completion_from_messages(question='', model="gpt-3.5-turbo", temperature
 
 def create_conversation_log(conversation_id):
     if 'conversation_created' not in st.session_state:
+        try:
+            payload = {
+                'conversationId': conversation_id,
+                'districtName': district_name,
+                'createdAt': datetime.datetime.utcnow().isoformat()
+            }
+            headers = {
+                'Authorization': f'Basic {log_credentials}',
+                'X-SIA-TENANT': 'DevAlpha'
+            }
+            response = requests.post(api_url + 'create-conversation-log', json=payload, headers=headers)
+            if 200 <= response.status_code < 300:
+                st.session_state['conversation_created'] = 'true'
+
+            print(f'Conversation log created. Response status code: {response.status_code}')
+        except Exception as e:
+            print(f"Unable to create conversation log: {e}")
+
+
+def log_message(is_user, message_text):
+    try:
         payload = {
-            'conversationId': conversation_id,
-            'districtName': district_name,
-            'createdAt': datetime.datetime.utcnow().isoformat()
+            'conversationId': st.session_state['conversation_identifier'],
+            'isUser': is_user,
+            'message': message_text,
+            'timeStamp': datetime.datetime.utcnow().isoformat()
         }
         headers = {
             'Authorization': f'Basic {log_credentials}',
             'X-SIA-TENANT': 'DevAlpha'
         }
-        response = requests.post(api_url + 'create-conversation-log', json=payload, headers=headers)
-        if 200 <= response.status_code < 300:
-            st.session_state['conversation_created'] = 'true'
-
-        print(f'Conversation log created. Response status code: {response.status_code}')
-
-
-def log_message(is_user, message_text):
-    payload = {
-        'conversationId': st.session_state['conversation_identifier'],
-        'isUser': is_user,
-        'message': message_text,
-        'timeStamp': datetime.datetime.utcnow().isoformat()
-    }
-    headers = {
-        'Authorization': f'Basic {log_credentials}',
-        'X-SIA-TENANT': 'DevAlpha'
-    }
-    response = requests.post(api_url + 'log-message', json=payload, headers=headers)
-    print(f'Message logged. Response status code: {response.status_code}')
+        response = requests.post(api_url + 'log-message', json=payload, headers=headers)
+        print(f'Message logged. Response status code: {response.status_code}')
+    except Exception as e:
+        print(f"Unable to log message: {e}")
 
 
 def user_prompt_submit():
@@ -146,7 +150,6 @@ def user_prompt_submit():
 
 
 st.set_page_config(page_title=f"{district_name} ChatBot", page_icon="🤖", layout="wide")
-
 
 if 'prompt' not in st.session_state:
     st.session_state.prompt = ''
