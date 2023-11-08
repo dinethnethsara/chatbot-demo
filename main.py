@@ -22,6 +22,8 @@ df.head()
 
 district_name = 'Alcoa City Schools'
 
+welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
+
 messages = [
     {
         'role': 'system',
