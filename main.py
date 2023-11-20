@@ -20,7 +20,7 @@ df = pd.read_csv('embeddings.csv', index_col=0)
 df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 df.head()
 
-district_name = 'Alcoa City Schools'
+district_name = 'Caprock Academy'
 
 welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
 
@@ -28,6 +28,7 @@ messages = [
     {
         'role': 'system',
         'content': f'You are a friendly assistant that answers {district_name} related questions. '
+                   'Speak in the name of {district_name}. '
                    'Answer the question as truthfully as possible using the provided context, '
                    'and if the answer is not contained within the text below, say \"I don\'t know.\"'
                    'Be proactive and offer some example question that you can answer.'
