@@ -28,7 +28,7 @@ messages = [
     {
         'role': 'system',
         'content': f'You are a friendly assistant that answers {district_name} related questions. '
-                   'Speak in the name of {district_name}. '
+                   f'Speak in the name of {district_name}. '
                    'Answer the question as truthfully as possible using the provided context, '
                    'and if the answer is not contained within the text below, say \"I don\'t know.\"'
                    'Be proactive and offer some example question that you can answer.'
