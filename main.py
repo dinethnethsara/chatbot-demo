@@ -73,7 +73,7 @@ def create_context(
     return "\n\n###\n\n".join(returns)
 
 
-def get_completion_from_messages(question='', model="gpt-3.5-turbo", temperature=0):
+def get_completion_from_messages(question='', model="gpt-4-1106-preview", temperature=0):
     question = f'Probably related to the {district_name}. {question}'
     context = create_context(
         question,
