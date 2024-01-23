@@ -1,154 +1,94 @@
-import base64
-import pandas as pd
-import openai
-import numpy as np
+from openai import OpenAI
+from time import sleep
 import streamlit as st
-import uuid
-import requests
-import datetime
-from openai.embeddings_utils import distances_from_embeddings
 from streamlit_chat import message
 from streamlit.components.v1 import html
 
-api_url = 'https://connect-dev.schoolinfo.app/api/chat-bot/'
-
-log_credentials = base64.b64encode(f"{st.secrets['log']['username']}:{st.secrets['log']['password']}".encode()).decode()
-
-openai.api_key = st.secrets["api_keys"]["openai"]
-
-df = pd.read_csv('embeddings.csv', index_col=0)
-df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
-df.head()
+from assistant_message import AssistantMessage
 
 district_name = 'Region 7 Education Service Center'
+assistant_id = 'asst_04C2LMtnfJ0FVGVs7du4zeNy'
 
-welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
-
-messages = [
-    {
-        'role': 'system',
-        'content': f'You are a friendly assistant that answers {district_name} related questions. '
-                   'Answer the question as truthfully as possible using the provided context, '
-                   'and if the answer is not contained within the text below, say \"I don\'t know.\"'
-                   'Be proactive and offer some example question that you can answer.'
-    },
-    {
-        'role': 'assistant',
-        'content': welcome_message
-    }
-]
+client = OpenAI(
+    organization=st.secrets["openai"]["org"],
+    api_key=st.secrets["openai"]["api_key"]
+)
 
 
-def create_context(
-        question, df, max_len=2500,
-):
-    """
-    Create a context for a question by finding the most similar context from the dataframe
-    """
+def get_thread_id():
+    if 'thread_id' not in st.session_state:
+        print('Creating a new thread.')
+        thread = client.beta.threads.create()
+        st.session_state['thread_id'] = thread.id
+    return st.session_state['thread_id']
 
-    # Get the embeddings for the question
-    q_embeddings = openai.Embedding.create(input=question, engine='text-embedding-ada-002')['data'][0]['embedding']
 
-    # Get the distances from the embeddings
-    df['distances'] = distances_from_embeddings(q_embeddings, df['embeddings'].values, distance_metric='cosine')
+def add_user_message(msg):
+    thread_id = get_thread_id()
+    print(f'Adding user message to thread: {thread_id}')
+    user_msg = client.beta.threads.messages.create(
+        thread_id=thread_id,
+        role='user',
+        content=msg
+    )
+    run_assistant()
 
-    returns = []
-    cur_len = 0
 
-    # Sort by distance and add the text to the context until the context is too long
-    for i, row in df.sort_values('distances', ascending=True).iterrows():
+def run_assistant():
+    thread_id = get_thread_id()
+    run = client.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=assistant_id
+    )
+    check_assistant_response(run)
 
-        # Add the length of the text to the current length
-        cur_len += row['n_tokens'] + 4
 
-        # If the context is too long, break
-        if cur_len > max_len:
+def check_assistant_response(run):
+    thread_id = get_thread_id()
+    while run.status in ['queued', 'in_progress']:
+        updated_run = client.beta.threads.runs.retrieve(
+            thread_id=thread_id,
+            run_id=run.id
+        )
+        print(f'Run status: {updated_run.status}')
+        if updated_run.status == 'completed':
+            handle_new_assistant_messages()
+            break
+        elif updated_run.status in ['queued', 'in_progress']:
+            sleep(1)
+            pass
+        else:
+            print(f'Run ended with status: {updated_run.status}')
             break
 
-        # Else add it to the text that is being returned
-        returns.append(row["text"])
 
-    # Return the context
-    return "\n\n###\n\n".join(returns)
-
-
-def get_completion_from_messages(question='', model="gpt-4-1106-preview", temperature=0):
-    question = f'Probably related to the {district_name}. {question}'
-    context = create_context(
-        question,
-        df,
+def handle_new_assistant_messages():
+    thread_id = get_thread_id()
+    messages = client.beta.threads.messages.list(
+        thread_id=thread_id
     )
 
-    messages.append({
-        'role': 'system',
-        'content': f'Here is some background information for the next question: \n\n{context}'
-    })
-    messages.append({'role': 'user', 'content': question})
+    assistant_messages = []
 
-    try:
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,  # this is the degree of randomness of the model's output
-        )
-    except Exception as e:
-        return None
+    count = 0
 
-    choices = response.get("choices", [])
-    if len(choices) > 0:
-        return choices[0]["message"]["content"].strip(" \n")
-    else:
-        return None
+    for msg in messages:
+        count += 1
+        assistant_messages.append(AssistantMessage(msg.id, msg.role, msg.content[0].text.value))
 
+    for msg in reversed(assistant_messages):
+        if msg.role == 'user':
+            message(msg.text, is_user=True, avatar_style="adventurer", key=msg.message_id + '_user')
+        else:
+            message(msg.text, key=msg.message_id)
 
-def create_conversation_log(conversation_id):
-    if 'conversation_created' not in st.session_state:
-        try:
-            payload = {
-                'conversationId': conversation_id,
-                'districtName': district_name,
-                'createdAt': datetime.datetime.utcnow().isoformat()
-            }
-            headers = {
-                'Authorization': f'Basic {log_credentials}',
-                'X-SIA-TENANT': 'DevAlpha'
-            }
-            response = requests.post(api_url + 'create-conversation-log', json=payload, headers=headers)
-            if 200 <= response.status_code < 300:
-                st.session_state['conversation_created'] = 'true'
-
-            print(f'Conversation log created. Response status code: {response.status_code}')
-        except Exception as e:
-            print(f"Unable to create conversation log: {e}")
-
-
-def log_message(is_user, message_text):
-    try:
-        payload = {
-            'conversationId': st.session_state['conversation_identifier'],
-            'isUser': is_user,
-            'message': message_text,
-            'timeStamp': datetime.datetime.utcnow().isoformat()
-        }
-        headers = {
-            'Authorization': f'Basic {log_credentials}',
-            'X-SIA-TENANT': 'DevAlpha'
-        }
-        response = requests.post(api_url + 'log-message', json=payload, headers=headers)
-        print(f'Message logged. Response status code: {response.status_code}')
-    except Exception as e:
-        print(f"Unable to log message: {e}")
+    st.session_state.message_count = count
 
 
 def user_prompt_submit():
     user_input = st.session_state.input
     st.session_state.prompt = user_input
     st.session_state['input'] = ''
-    if 'conversation_identifier' not in st.session_state:
-        convo_id = str(uuid.uuid4())
-        st.session_state['conversation_identifier'] = convo_id
-        create_conversation_log(convo_id)
-    log_message(True, user_input)
 
 
 st.set_page_config(page_title=f"{district_name} ChatBot", page_icon="🤖", layout="wide")
@@ -156,11 +96,8 @@ st.set_page_config(page_title=f"{district_name} ChatBot", page_icon="🤖", layo
 if 'prompt' not in st.session_state:
     st.session_state.prompt = ''
 
-if 'generated' not in st.session_state:
-    st.session_state['generated'] = []
-
-if 'past' not in st.session_state:
-    st.session_state['past'] = []
+if 'message_count' not in st.session_state:
+    st.session_state.message_count = 1
 
 html(f"""
 <script>
@@ -174,23 +111,14 @@ html(f"""
             }}
         }}, "3000");
     }}
-    scroll({len(st.session_state['generated'])});
+    scroll({st.session_state.message_count});
 </script>
 """)
 
-message(welcome_message, key='-1')
+message(f'Thank you for your interest in {district_name}! What would you like to learn more about?', key='-1')
 
 if st.session_state.prompt:
-    assistant_response = get_completion_from_messages(st.session_state.prompt, temperature=0)
-    st.session_state.past.append(st.session_state.prompt)
-    st.session_state.generated.append(assistant_response)
-    messages.append({'role': 'assistant', 'content': assistant_response})
-    log_message(False, assistant_response)
-
-if st.session_state['generated']:
-    for i in range(len(st.session_state['generated'])):
-        message(st.session_state['past'][i], is_user=True, avatar_style="adventurer", key=str(i) + '_user')
-        message(st.session_state["generated"][i], key=str(i))
+    add_user_message(st.session_state.prompt)
 
 st.text_input(key='input',
               on_change=user_prompt_submit,
@@ -208,7 +136,7 @@ styl = f"""
         width: 96vw;
         margin: auto;
     }}    
-    
+
     .block-container {{
         position: fixed !important;
         bottom: 1rem !important;
@@ -218,11 +146,11 @@ styl = f"""
         max-height: 90vh !important;
         width: 96vw !important;
     }}
-    
+
     #MainMenu {{
         display: none;
     }}
-    
+
     footer {{
         display: none;
     }}
