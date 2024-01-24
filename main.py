@@ -6,19 +6,13 @@ from streamlit.components.v1 import html
 
 from assistant_message import AssistantMessage
 
-district_name = 'Region 7 Education Service Center'
-assistant_id = 'asst_04C2LMtnfJ0FVGVs7du4zeNy'
 district_name = 'Bakersfield Adult School'
-
-welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
-                   f'Speak in the name of {district_name}. '
+assistant_id = 'asst_V4ONlIAh9aRZX44ODYQ7Wca4'
 
 client = OpenAI(
-    organization='org-Ak4h2sJJbA6q22bkO3cbf7WK',
-    api_key=st.secrets["api_keys"]["openai"]
+    organization=st.secrets["openai"]["org"],
+    api_key=st.secrets["openai"]["api_key"]
 )
-
-welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
 
 
 def get_thread_id():
@@ -121,9 +115,7 @@ html(f"""
 </script>
 """)
 
-message(welcome_message, key='-1')
-
-message(welcome_message, key='-1')
+message(f'Thank you for your interest in {district_name}! What would you like to learn more about?', key='-1')
 
 if st.session_state.prompt:
     add_user_message(st.session_state.prompt)
