@@ -6,12 +6,12 @@ from streamlit.components.v1 import html
 
 from assistant_message import AssistantMessage
 
-district_name = 'Region 7 Education Service Center'
-assistant_id = 'asst_04C2LMtnfJ0FVGVs7du4zeNy'
+district_name = 'Edlio Central'
+assistant_id = 'asst_ZmdoEpxfvtY9hMBZjTMxrPX5'
 
 client = OpenAI(
-    organization='org-Ak4h2sJJbA6q22bkO3cbf7WK',
-    api_key=st.secrets["api_keys"]["openai"]
+    organization=st.secrets["openai"]["org"],
+    api_key=st.secrets["openai"]["api_key"]
 )
 
 welcome_message = f'Thank you for your interest in {district_name}! What would you like to learn more about?'
