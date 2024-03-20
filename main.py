@@ -76,7 +76,13 @@ def handle_new_assistant_messages():
 
     for msg in messages:
         count += 1
-        assistant_messages.append(AssistantMessage(msg.id, msg.role, msg.content[0].text.value))
+        message_content = msg.content[0].text
+        annotations = message_content.annotations
+
+        for index, annotation in enumerate(annotations):
+            message_content.value = message_content.value.replace(annotation.text, '')
+
+        assistant_messages.append(AssistantMessage(msg.id, msg.role, message_content.value))
 
     for msg in reversed(assistant_messages):
         if msg.role == 'user':
